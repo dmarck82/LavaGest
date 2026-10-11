@@ -1,0 +1,17 @@
+# Banco de dados local
+/dados/*.sqlite
+/dados/*.sqlite-shm
+/dados/*.sqlite-wal
+
+# Dependências e arquivos locais
+/vendor/
+.env
+.env.*
+!.env.example
+*.log
+
+# Editor e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
