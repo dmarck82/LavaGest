@@ -14,6 +14,7 @@ class Conexao
 
         $conexao = new PDO('sqlite:' . $caminhoBanco);
         $conexao->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $conexao->exec('PRAGMA foreign_keys = ON');
 
         return $conexao;
     }

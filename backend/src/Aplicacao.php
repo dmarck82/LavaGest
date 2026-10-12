@@ -9,10 +9,12 @@ use LavaGest\Banco\InicializadorBanco;
 use LavaGest\Controladores\AutenticacaoControlador;
 use LavaGest\Controladores\ClienteControlador;
 use LavaGest\Controladores\UsuarioControlador;
+use LavaGest\Controladores\VeiculoControlador;
 use LavaGest\Http\TratadorDeErros;
 use LavaGest\Repositorios\ClienteRepositorio;
 use LavaGest\Repositorios\TokenRepositorio;
 use LavaGest\Repositorios\UsuarioRepositorio;
+use LavaGest\Repositorios\VeiculoRepositorio;
 use LavaGest\Seguranca\Autenticador;
 
 class Aplicacao
@@ -62,9 +64,11 @@ class Aplicacao
         $clienteRepositorio = new ClienteRepositorio($conexao);
         $usuarioRepositorio = new UsuarioRepositorio($conexao);
         $tokenRepositorio = new TokenRepositorio($conexao);
+        $veiculoRepositorio = new VeiculoRepositorio($conexao);
         $autenticador = new Autenticador($tokenRepositorio);
         $usuarioControlador = new UsuarioControlador($usuarioRepositorio);
         $clienteControlador = new ClienteControlador($clienteRepositorio);
+        $veiculoControlador = new VeiculoControlador($veiculoRepositorio, $clienteRepositorio);
         $autenticacaoControlador = new AutenticacaoControlador($usuarioRepositorio, $tokenRepositorio);
 
         $metodo = $_SERVER['REQUEST_METHOD'];
@@ -76,6 +80,7 @@ class Aplicacao
             $caminho,
             $usuarioControlador,
             $clienteControlador,
+            $veiculoControlador,
             $autenticacaoControlador,
             $autenticador
         );

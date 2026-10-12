@@ -6,6 +6,7 @@ namespace LavaGest\Http;
 
 use LavaGest\Excecoes\CredenciaisInvalidasException;
 use LavaGest\Excecoes\EmailJaCadastradoException;
+use LavaGest\Excecoes\PlacaJaCadastradaException;
 use LavaGest\Excecoes\TokenInvalidoException;
 use LavaGest\Excecoes\WhatsappJaCadastradoException;
 use InvalidArgumentException;
@@ -30,6 +31,8 @@ class TratadorDeErros
         } catch (EmailJaCadastradoException $erro) {
             $this->responder(409, $erro->getMessage());
         } catch (WhatsappJaCadastradoException $erro) {
+            $this->responder(409, $erro->getMessage());
+        } catch (PlacaJaCadastradaException $erro) {
             $this->responder(409, $erro->getMessage());
         } catch (RuntimeException $erro) {
             $this->responder(404, $erro->getMessage());

@@ -54,3 +54,22 @@ export function aplicarMascaraCep(campo) {
         campo.value = formatarCep(campo.value);
     });
 }
+
+export function formatarPlaca(valor) {
+    const placa = String(valor)
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 7);
+
+    if (placa.length <= 3) {
+        return placa;
+    }
+
+    return placa.slice(0, 3) + '-' + placa.slice(3);
+}
+
+export function aplicarMascaraPlaca(campo) {
+    campo.addEventListener('input', () => {
+        campo.value = formatarPlaca(campo.value);
+    });
+}
