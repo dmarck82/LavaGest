@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Banco;
+
+use PDO;
+
 class Conexao
 {
     public static function criar(): PDO

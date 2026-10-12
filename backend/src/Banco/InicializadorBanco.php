@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Banco;
+
+use PDO;
+use RuntimeException;
+
 class InicializadorBanco
 {
     public static function executar(PDO $conexao): void

@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Repositorios;
+
+use PDO;
+
 class TokenRepositorio
 {
     private PDO $conexao;
@@ -47,5 +51,39 @@ class TokenRepositorio
             'tipo' => 'Bearer',
             'expira_em' => $expiraEm,
         ];
+    }
+
+    public function buscarUsuarioIdPorToken(string $token): ?int
+    {
+        $sql = '
+            SELECT usu_id
+            FROM aut_token
+            WHERE
+                aut_token_hash = :token_hash
+                AND aut_expira_em > :agora
+            LIMIT 1
+        ';
+
+        $stmt = $this->conexao->prepare($sql);
+
+        $stmt->bindValue(
+            ':token_hash',
+            hash('sha256', $token)
+        );
+
+        $stmt->bindValue(
+            ':agora',
+            date('Y-m-d H:i:s')
+        );
+
+        $stmt->execute();
+
+        $usuarioId = $stmt->fetchColumn();
+
+        if ($usuarioId === false) {
+            return null;
+        }
+
+        return (int) $usuarioId;
     }
 }

@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Repositorios;
+
+use LavaGest\Excecoes\EmailJaCadastradoException;
+use LavaGest\Modelos\Usuario;
+use PDO;
+use PDOException;
+
 class UsuarioRepositorio
 {
     private PDO $conexao;
@@ -43,7 +50,12 @@ class UsuarioRepositorio
         $stmt->bindValue(':senha', $senhaHash);
         $stmt->bindValue(':telefone', $usuario->getTelefone());
         $stmt->bindValue(':status', $usuario->getStatus());
-        $stmt->execute();
+
+        try {
+            $stmt->execute();
+        } catch (PDOException $erro) {
+            $this->tratarErroPersistencia($erro);
+        }
 
         $id = (int) $this->conexao->lastInsertId();
 
@@ -77,7 +89,11 @@ class UsuarioRepositorio
         $stmt->bindValue(':telefone', $usuario->getTelefone());
         $stmt->bindValue(':status', $usuario->getStatus());
         $stmt->bindValue(':id', $usuario->getId(), PDO::PARAM_INT);
-        $stmt->execute();
+        try {
+            $stmt->execute();
+        } catch (PDOException $erro) {
+            $this->tratarErroPersistencia($erro);
+        }
     }
 
     public function atualizarSenha(int $id, string $novaSenha): void
@@ -214,5 +230,24 @@ class UsuarioRepositorio
         $stmt->bindValue(':ultimo_login', date('Y-m-d H:i:s'));
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
+    }
+
+    private function tratarErroPersistencia(
+        PDOException $erro
+    ): void {
+        if (
+            str_contains(
+                $erro->getMessage(),
+                'usu_usuario.usu_email'
+            )
+        ) {
+            throw new EmailJaCadastradoException(
+                'Já existe um usuário com este e-mail.',
+                0,
+                $erro
+            );
+        }
+
+        throw $erro;
     }
 }

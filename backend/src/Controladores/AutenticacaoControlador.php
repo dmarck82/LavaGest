@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Controladores;
+
+use LavaGest\Excecoes\CredenciaisInvalidasException;
+use LavaGest\Repositorios\TokenRepositorio;
+use LavaGest\Repositorios\UsuarioRepositorio;
+use InvalidArgumentException;
+use LogicException;
+
 class AutenticacaoControlador
 {
     private UsuarioRepositorio $usuarioRepositorio;

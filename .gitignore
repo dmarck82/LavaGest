@@ -1,10 +1,10 @@
 # Banco de dados local
-/dados/*.sqlite
-/dados/*.sqlite-shm
-/dados/*.sqlite-wal
+/backend/dados/*.sqlite
+/backend/dados/*.sqlite-shm
+/backend/dados/*.sqlite-wal
 
 # Dependências e arquivos locais
-/vendor/
+/backend/vendor/
 .env
 .env.*
 !.env.example

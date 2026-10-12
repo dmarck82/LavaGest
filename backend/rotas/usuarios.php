@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use LavaGest\Controladores\UsuarioControlador;
+use LavaGest\Seguranca\Autenticador;
+
 function processarRotasUsuarios(
     string $metodo,
     string $caminho,
-    UsuarioControlador $controlador
+    UsuarioControlador $controlador,
+    Autenticador $autenticador
 ): bool {
     $partes = explode('/', trim($caminho, '/'));
 
@@ -30,6 +34,10 @@ function processarRotasUsuarios(
         );
 
         return true;
+    }
+
+    if ($partes[0] === 'usuarios') {
+        $autenticador->autenticar();
     }
 
     if ($metodo === 'GET' && $caminho === '/usuarios') {

@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Controladores;
+
+use LavaGest\Modelos\Usuario;
+use LavaGest\Repositorios\UsuarioRepositorio;
+use InvalidArgumentException;
+use RuntimeException;
+
 class UsuarioControlador
 {
     private UsuarioRepositorio $usuarioRepositorio;
@@ -13,6 +20,16 @@ class UsuarioControlador
 
     public function criarUsuario(array $dados): array
     {
+        $this->validarCamposObrigatorios(
+            $dados,
+            [
+                'nome',
+                'email',
+                'senha',
+                'telefone',
+            ]
+        );
+
         $usuario = new Usuario(
             $dados['nome'],
             $dados['email'],
@@ -109,5 +126,22 @@ class UsuarioControlador
         }
 
         return $usuario;
+    }
+
+    private function validarCamposObrigatorios(
+        array $dados,
+        array $campos
+    ): void {
+        foreach ($campos as $campo) {
+            if (
+                !array_key_exists($campo, $dados)
+                || !is_string($dados[$campo])
+                || trim($dados[$campo]) === ''
+            ) {
+                throw new InvalidArgumentException(
+                    "O campo '{$campo}' é obrigatório."
+                );
+            }
+        }
     }
 }

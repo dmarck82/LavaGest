@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+namespace LavaGest\Modelos;
+
+use InvalidArgumentException;
+
 class Usuario
 {
     private ?int $id;
@@ -30,7 +34,7 @@ class Usuario
         $this->nome = $nome;
         $this->email = $email;
         $this->senha = $senha;
-        $this->telefone = $telefone;
+        $this->telefone = $this->normalizarTelefone($telefone);
         $this->status = $status;
         $this->ultimo_login = $ultimo_login;
     }
@@ -128,5 +132,21 @@ class Usuario
                 'A senha deve ter pelo menos 8 caracteres.'
             );
         }
+    }
+
+    private function normalizarTelefone(string $telefone): string
+    {
+        $telefone = preg_replace('/\D/', '', $telefone);
+
+        if (
+            strlen($telefone) !== 10
+            && strlen($telefone) !== 11
+        ) {
+            throw new InvalidArgumentException(
+                'Telefone deve ter 10 ou 11 dígitos.'
+            );
+        }
+
+        return $telefone;
     }
 }
