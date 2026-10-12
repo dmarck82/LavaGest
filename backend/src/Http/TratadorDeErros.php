@@ -7,6 +7,7 @@ namespace LavaGest\Http;
 use LavaGest\Excecoes\CredenciaisInvalidasException;
 use LavaGest\Excecoes\EmailJaCadastradoException;
 use LavaGest\Excecoes\TokenInvalidoException;
+use LavaGest\Excecoes\WhatsappJaCadastradoException;
 use InvalidArgumentException;
 use JsonException;
 use RuntimeException;
@@ -28,6 +29,8 @@ class TratadorDeErros
             $this->responder(401, $erro->getMessage());
         } catch (EmailJaCadastradoException $erro) {
             $this->responder(409, $erro->getMessage());
+        } catch (WhatsappJaCadastradoException $erro) {
+            $this->responder(409, $erro->getMessage());
         } catch (RuntimeException $erro) {
             $this->responder(404, $erro->getMessage());
         } catch (Throwable $erro) {
@@ -40,12 +43,9 @@ class TratadorDeErros
         }
     }
 
-    private function responder(
-        int $status,
-        string $mensagem
-    ): void {
+    private function responder(int $status, string $mensagem): void
+    {
         http_response_code($status);
-
         echo json_encode([
             'erro' => $mensagem
         ]);

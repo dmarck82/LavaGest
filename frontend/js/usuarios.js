@@ -3,7 +3,6 @@ import { apenasNumeros, aplicarMascaraTelefone, formatarTelefone, telefoneValido
 
 const listaUsuarios = document.querySelector('#lista-usuarios');
 const mensagem = document.querySelector('#mensagem');
-const botaoSair = document.querySelector('#botao-sair');
 
 const botaoNovoUsuario = document.querySelector('#botao-novo-usuario');
 const formularioUsuario = document.querySelector('#formulario-usuario');
@@ -23,13 +22,6 @@ let usuarioEmEdicaoId = null;
 if (!sessionStorage.getItem('token')) {
     window.location.replace('index.html');
 }
-
-botaoSair.addEventListener('click', () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('token_expira_em');
-
-    window.location.replace('index.html');
-});
 
 botaoNovoUsuario.addEventListener('click', () => {
     usuarioEmEdicaoId = null;

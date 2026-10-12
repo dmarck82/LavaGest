@@ -7,8 +7,10 @@ namespace LavaGest;
 use LavaGest\Banco\Conexao;
 use LavaGest\Banco\InicializadorBanco;
 use LavaGest\Controladores\AutenticacaoControlador;
+use LavaGest\Controladores\ClienteControlador;
 use LavaGest\Controladores\UsuarioControlador;
 use LavaGest\Http\TratadorDeErros;
+use LavaGest\Repositorios\ClienteRepositorio;
 use LavaGest\Repositorios\TokenRepositorio;
 use LavaGest\Repositorios\UsuarioRepositorio;
 use LavaGest\Seguranca\Autenticador;
@@ -57,31 +59,23 @@ class Aplicacao
 
         InicializadorBanco::executar($conexao);
 
+        $clienteRepositorio = new ClienteRepositorio($conexao);
         $usuarioRepositorio = new UsuarioRepositorio($conexao);
         $tokenRepositorio = new TokenRepositorio($conexao);
-
         $autenticador = new Autenticador($tokenRepositorio);
-
-        $usuarioControlador = new UsuarioControlador(
-            $usuarioRepositorio
-        );
-
-        $autenticacaoControlador = new AutenticacaoControlador(
-            $usuarioRepositorio,
-            $tokenRepositorio
-        );
+        $usuarioControlador = new UsuarioControlador($usuarioRepositorio);
+        $clienteControlador = new ClienteControlador($clienteRepositorio);
+        $autenticacaoControlador = new AutenticacaoControlador($usuarioRepositorio, $tokenRepositorio);
 
         $metodo = $_SERVER['REQUEST_METHOD'];
 
-        $caminho = parse_url(
-            $_SERVER['REQUEST_URI'],
-            PHP_URL_PATH
-        ) ?: '/';
+        $caminho = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
 
-        \processarRotas(
+        processarRotas(
             $metodo,
             $caminho,
             $usuarioControlador,
+            $clienteControlador,
             $autenticacaoControlador,
             $autenticador
         );

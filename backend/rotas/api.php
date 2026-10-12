@@ -3,16 +3,19 @@
 declare(strict_types=1);
 
 use LavaGest\Controladores\AutenticacaoControlador;
+use LavaGest\Controladores\ClienteControlador;
 use LavaGest\Controladores\UsuarioControlador;
 use LavaGest\Seguranca\Autenticador;
 
 require_once __DIR__ . '/usuarios.php';
 require_once __DIR__ . '/autenticacao.php';
+require_once __DIR__ . '/clientes.php';
 
 function processarRotas(
     string $metodo,
     string $caminho,
     UsuarioControlador $usuarioControlador,
+    ClienteControlador $clienteControlador,
     AutenticacaoControlador $autenticacaoControlador,
     Autenticador $autenticador
 ): void {
@@ -20,6 +23,15 @@ function processarRotas(
         $metodo,
         $caminho,
         $usuarioControlador,
+        $autenticador
+    )) {
+        return;
+    }
+
+    if (processarRotasClientes(
+        $metodo,
+        $caminho,
+        $clienteControlador,
         $autenticador
     )) {
         return;

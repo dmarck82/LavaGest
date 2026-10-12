@@ -38,3 +38,19 @@ export function aplicarMascaraTelefone(campo) {
         campo.value = formatarTelefone(campo.value);
     });
 }
+
+export function formatarCep(valor) {
+    const numeros = apenasNumeros(valor).slice(0, 8);
+
+    if (numeros.length <= 5) {
+        return numeros;
+    }
+
+    return numeros.slice(0, 5) + '-' + numeros.slice(5);
+}
+
+export function aplicarMascaraCep(campo) {
+    campo.addEventListener('input', () => {
+        campo.value = formatarCep(campo.value);
+    });
+}
