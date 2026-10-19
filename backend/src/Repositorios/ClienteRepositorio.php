@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace LavaGest\Repositorios;
 
-use LavaGest\Modelos\Cliente;
+use LavaGest\Contratos\ClienteRepositorioInterface;
+use LavaGest\Excecoes\ClientePossuiVeiculosException;
 use LavaGest\Excecoes\WhatsappJaCadastradoException;
+use LavaGest\Modelos\Cliente;
 use LogicException;
-use PDOException;
 use PDO;
+use PDOException;
 
-class ClienteRepositorio
+// Implementa o contrato de clientes usando SQL e uma conexão PDO.
+class ClienteRepositorio implements ClienteRepositorioInterface
 {
     private PDO $conexao;
 
@@ -45,22 +48,22 @@ class ClienteRepositorio
             )
         ';
 
-        $stmt = $this->conexao->prepare($sql);
+        $comando = $this->conexao->prepare($sql);
 
-        $stmt->bindValue(':nome', $cliente->getNome());
-        $stmt->bindValue(':telefone', $cliente->getTelefone());
-        $stmt->bindValue(':whatsapp', $cliente->getWhatsapp());
-        $stmt->bindValue(':email', $cliente->getEmail());
-        $stmt->bindValue(':uf', $cliente->getUf());
-        $stmt->bindValue(':cidade', $cliente->getCidade());
-        $stmt->bindValue(':endereco', $cliente->getEndereco());
-        $stmt->bindValue(':bairro', $cliente->getBairro());
-        $stmt->bindValue(':cep', $cliente->getCep());
+        $comando->bindValue(':nome', $cliente->getNome());
+        $comando->bindValue(':telefone', $cliente->getTelefone());
+        $comando->bindValue(':whatsapp', $cliente->getWhatsapp());
+        $comando->bindValue(':email', $cliente->getEmail());
+        $comando->bindValue(':uf', $cliente->getUf());
+        $comando->bindValue(':cidade', $cliente->getCidade());
+        $comando->bindValue(':endereco', $cliente->getEndereco());
+        $comando->bindValue(':bairro', $cliente->getBairro());
+        $comando->bindValue(':cep', $cliente->getCep());
 
         try {
-            $stmt->execute();
+            $comando->execute();
         } catch (PDOException $erro) {
-            $this->tratarErroPersistencia($erro);
+            $this->tratarErroPersistencia($erro, $cliente);
         }
 
         $id = (int) $this->conexao->lastInsertId();
@@ -92,23 +95,23 @@ class ClienteRepositorio
             WHERE cli_id = :id
         ';
 
-        $stmt = $this->conexao->prepare($sql);
+        $comando = $this->conexao->prepare($sql);
 
-        $stmt->bindValue(':nome', $cliente->getNome());
-        $stmt->bindValue(':telefone', $cliente->getTelefone());
-        $stmt->bindValue(':whatsapp', $cliente->getWhatsapp());
-        $stmt->bindValue(':email', $cliente->getEmail());
-        $stmt->bindValue(':uf', $cliente->getUf());
-        $stmt->bindValue(':cidade', $cliente->getCidade());
-        $stmt->bindValue(':endereco', $cliente->getEndereco());
-        $stmt->bindValue(':bairro', $cliente->getBairro());
-        $stmt->bindValue(':cep', $cliente->getCep());
-        $stmt->bindValue(':id', $cliente->getId(), PDO::PARAM_INT);
+        $comando->bindValue(':nome', $cliente->getNome());
+        $comando->bindValue(':telefone', $cliente->getTelefone());
+        $comando->bindValue(':whatsapp', $cliente->getWhatsapp());
+        $comando->bindValue(':email', $cliente->getEmail());
+        $comando->bindValue(':uf', $cliente->getUf());
+        $comando->bindValue(':cidade', $cliente->getCidade());
+        $comando->bindValue(':endereco', $cliente->getEndereco());
+        $comando->bindValue(':bairro', $cliente->getBairro());
+        $comando->bindValue(':cep', $cliente->getCep());
+        $comando->bindValue(':id', $cliente->getId(), PDO::PARAM_INT);
 
         try {
-            $stmt->execute();
+            $comando->execute();
         } catch (PDOException $erro) {
-            $this->tratarErroPersistencia($erro);
+            $this->tratarErroPersistencia($erro, $cliente);
         }
     }
 
@@ -116,11 +119,11 @@ class ClienteRepositorio
     {
         $sql = 'SELECT * FROM cli_cliente WHERE cli_id = :id';
 
-        $stmt = $this->conexao->prepare($sql);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':id', $id, PDO::PARAM_INT);
+        $comando->execute();
 
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        $resultado = $comando->fetch(PDO::FETCH_ASSOC);
 
         if ($resultado === false) {
             return null;
@@ -136,11 +139,11 @@ class ClienteRepositorio
             WHERE cli_whatsapp = :whatsapp
         ';
 
-        $stmt = $this->conexao->prepare($sql);
-        $stmt->bindValue(':whatsapp', $whatsapp);
-        $stmt->execute();
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':whatsapp', $whatsapp);
+        $comando->execute();
 
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        $resultado = $comando->fetch(PDO::FETCH_ASSOC);
 
         if ($resultado === false) {
             return null;
@@ -157,38 +160,69 @@ class ClienteRepositorio
             ORDER BY cli_nome
         ';
 
-        $stmt = $this->conexao->prepare($sql);
-        $stmt->bindValue(':nome', '%' . $nome . '%');
-        $stmt->execute();
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':nome', '%' . $nome . '%');
+        $comando->execute();
 
-        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $resultados = $comando->fetchAll(PDO::FETCH_ASSOC);
 
-        return array_map(
-            fn(array $resultado) => $this->transformarEmCliente($resultado),
-            $resultados
-        );
+        $clientes = [];
+
+        foreach ($resultados as $resultado) {
+            $cliente = $this->transformarEmCliente($resultado);
+            $clientes[] = $cliente;
+        }
+
+        return $clientes;
     }
 
     public function listarTodos(): array
     {
         $sql = 'SELECT * FROM cli_cliente ORDER BY cli_nome';
 
-        $stmt = $this->conexao->query($sql);
-        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $comando = $this->conexao->query($sql);
+        $resultados = $comando->fetchAll(PDO::FETCH_ASSOC);
 
-        return array_map(
-            fn(array $resultado) => $this->transformarEmCliente($resultado),
-            $resultados
-        );
+        $clientes = [];
+
+        foreach ($resultados as $resultado) {
+            $cliente = $this->transformarEmCliente($resultado);
+            $clientes[] = $cliente;
+        }
+
+        return $clientes;
     }
 
     public function deletar(int $id): void
     {
         $sql = 'DELETE FROM cli_cliente WHERE cli_id = :id';
 
-        $stmt = $this->conexao->prepare($sql);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':id', $id, PDO::PARAM_INT);
+        try {
+            $comando->execute();
+        } catch (PDOException $erro) {
+            // SQLSTATE 23000 indica uma violação de integridade, como um vínculo obrigatório.
+            if ($erro->getCode() !== '23000') {
+                throw $erro;
+            }
+
+            // Protege também contra um vínculo criado entre a consulta e o DELETE.
+            $consulta = $this->conexao->prepare(
+                'SELECT 1 FROM vei_veiculo WHERE vei_cliente_id = :id LIMIT 1'
+            );
+            $consulta->execute([':id' => $id]);
+
+            if ($consulta->fetchColumn() !== false) {
+                throw new ClientePossuiVeiculosException(
+                    'Cliente possui veículos cadastrados.',
+                    0,
+                    $erro
+                );
+            }
+
+            throw $erro;
+        }
     }
 
     private function transformarEmCliente(array $resultado): Cliente
@@ -208,9 +242,15 @@ class ClienteRepositorio
         );
     }
 
-    private function tratarErroPersistencia(PDOException $erro): void
+    private function tratarErroPersistencia(PDOException $erro, Cliente $cliente): void
     {
-        if (str_contains($erro->getMessage(), 'cli_cliente.cli_whatsapp')) {
+        if ($erro->getCode() !== '23000') {
+            throw $erro;
+        }
+
+        $existente = $this->buscarPorWhatsapp($cliente->getWhatsapp());
+
+        if ($existente !== null && $existente->getId() !== $cliente->getId()) {
             throw new WhatsappJaCadastradoException(
                 'Já existe um cliente cadastrado com este WhatsApp.',
                 0,

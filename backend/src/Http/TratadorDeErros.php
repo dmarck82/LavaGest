@@ -4,53 +4,33 @@ declare(strict_types=1);
 
 namespace LavaGest\Http;
 
-use LavaGest\Excecoes\CredenciaisInvalidasException;
-use LavaGest\Excecoes\EmailJaCadastradoException;
-use LavaGest\Excecoes\PlacaJaCadastradaException;
-use LavaGest\Excecoes\TokenInvalidoException;
-use LavaGest\Excecoes\WhatsappJaCadastradoException;
 use InvalidArgumentException;
 use JsonException;
-use RuntimeException;
+use LavaGest\Excecoes\ConflitoException;
+use LavaGest\Excecoes\NaoAutorizadoException;
+use LavaGest\Excecoes\RecursoNaoEncontradoException;
 use Throwable;
 
-class TratadorDeErros
+final class TratadorDeErros
 {
-    public function executar(callable $operacao): void
+    public function executar(callable $operacao): RespostaJson
     {
         try {
-            $operacao();
+            return $operacao();
         } catch (JsonException $erro) {
-            $this->responder(400, 'JSON inválido.');
+            return new RespostaJson(['erro' => 'JSON inválido.'], 400);
         } catch (InvalidArgumentException $erro) {
-            $this->responder(422, $erro->getMessage());
-        } catch (CredenciaisInvalidasException $erro) {
-            $this->responder(401, $erro->getMessage());
-        } catch (TokenInvalidoException $erro) {
-            $this->responder(401, $erro->getMessage());
-        } catch (EmailJaCadastradoException $erro) {
-            $this->responder(409, $erro->getMessage());
-        } catch (WhatsappJaCadastradoException $erro) {
-            $this->responder(409, $erro->getMessage());
-        } catch (PlacaJaCadastradaException $erro) {
-            $this->responder(409, $erro->getMessage());
-        } catch (RuntimeException $erro) {
-            $this->responder(404, $erro->getMessage());
+            return new RespostaJson(['erro' => $erro->getMessage()], 422);
+        } catch (NaoAutorizadoException $erro) {
+            return new RespostaJson(['erro' => $erro->getMessage()], 401);
+        } catch (ConflitoException $erro) {
+            return new RespostaJson(['erro' => $erro->getMessage()], 409);
+        } catch (RecursoNaoEncontradoException $erro) {
+            return new RespostaJson(['erro' => $erro->getMessage()], 404);
         } catch (Throwable $erro) {
-            error_log($erro->getMessage());
+            error_log((string) $erro);
 
-            $this->responder(
-                500,
-                'Erro interno do servidor.'
-            );
+            return new RespostaJson(['erro' => 'Erro interno do servidor.'], 500);
         }
-    }
-
-    private function responder(int $status, string $mensagem): void
-    {
-        http_response_code($status);
-        echo json_encode([
-            'erro' => $mensagem
-        ]);
     }
 }

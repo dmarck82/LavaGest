@@ -3,79 +3,37 @@
 declare(strict_types=1);
 
 use LavaGest\Controladores\UsuarioControlador;
-use LavaGest\Seguranca\Autenticador;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Http\Roteador;
 
-function processarRotasUsuarios(
-    string $metodo,
-    string $caminho,
-    UsuarioControlador $controlador,
-    Autenticador $autenticador
-): bool {
-    $partes = explode('/', trim($caminho, '/'));
+function registrarRotasUsuarios(Roteador $roteador, UsuarioControlador $controlador): void
+{
+    // A função de cada rota só será executada quando chegar uma requisição correspondente.
+    $roteador->adicionar('GET', '/usuarios', function () use ($controlador): RespostaJson {
+        return $controlador->listar();
+    });
 
-    $ehRotaComId = (
-        count($partes) === 2
-        && $partes[0] === 'usuarios'
-        && ctype_digit($partes[1])
-    );
+    // false mantém o cadastro público: esta rota não exige token.
+    $roteador->adicionar('POST', '/usuarios', function (Requisicao $requisicao) use ($controlador): RespostaJson {
+        return $controlador->criar($requisicao);
+    }, false);
 
-    if ($metodo === 'POST' && $caminho === '/usuarios') {
-        $dados = json_decode(
-            file_get_contents('php://input'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
+    $roteador->adicionar('GET', '/usuarios/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-        http_response_code(201);
+        return $controlador->buscar($id);
+    });
 
-        echo json_encode(
-            $controlador->criarUsuario($dados)
-        );
+    $roteador->adicionar('PUT', '/usuarios/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-        return true;
-    }
+        return $controlador->atualizar($requisicao, $id);
+    });
 
-    if ($partes[0] === 'usuarios') {
-        $autenticador->autenticar();
-    }
+    $roteador->adicionar('DELETE', '/usuarios/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-    if ($metodo === 'GET' && $caminho === '/usuarios') {
-        echo json_encode($controlador->listarUsuarios());
-
-        return true;
-    }
-
-    if ($metodo === 'GET' && $ehRotaComId) {
-        echo json_encode(
-            $controlador->buscarUsuario((int) $partes[1])
-        );
-
-        return true;
-    }
-
-    if ($metodo === 'PUT' && $ehRotaComId) {
-        $dados = json_decode(
-            file_get_contents('php://input'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-
-        echo json_encode(
-            $controlador->atualizarUsuario((int) $partes[1], $dados)
-        );
-
-        return true;
-    }
-
-    if ($metodo === 'DELETE' && $ehRotaComId) {
-        $controlador->deletarUsuario((int) $partes[1]);
-
-        http_response_code(204);
-
-        return true;
-    }
-
-    return false;
+        return $controlador->deletar($id);
+    });
 }

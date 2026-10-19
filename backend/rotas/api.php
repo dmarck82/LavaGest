@@ -6,55 +6,23 @@ use LavaGest\Controladores\AutenticacaoControlador;
 use LavaGest\Controladores\ClienteControlador;
 use LavaGest\Controladores\UsuarioControlador;
 use LavaGest\Controladores\VeiculoControlador;
-use LavaGest\Seguranca\Autenticador;
+use LavaGest\Http\Roteador;
 
 require_once __DIR__ . '/usuarios.php';
-require_once __DIR__ . '/autenticacao.php';
 require_once __DIR__ . '/clientes.php';
 require_once __DIR__ . '/veiculos.php';
+require_once __DIR__ . '/autenticacao.php';
 
-function processarRotas(
-    string $metodo,
-    string $caminho,
+// Este é o ponto de encontro dos arquivos de rotas.
+function registrarRotasApi(
+    Roteador $roteador,
     UsuarioControlador $usuarioControlador,
     ClienteControlador $clienteControlador,
     VeiculoControlador $veiculoControlador,
-    AutenticacaoControlador $autenticacaoControlador,
-    Autenticador $autenticador
+    AutenticacaoControlador $autenticacaoControlador
 ): void {
-    if (processarRotasUsuarios(
-        $metodo,
-        $caminho,
-        $usuarioControlador,
-        $autenticador
-    )) {
-        return;
-    }
-
-    if (processarRotasClientes(
-        $metodo,
-        $caminho,
-        $clienteControlador,
-        $autenticador
-    )) {
-        return;
-    }
-
-    if (processarRotasVeiculos($metodo, $caminho, $veiculoControlador, $autenticador)) {
-        return;
-    }
-
-    if (processarRotasAutenticacao(
-        $metodo,
-        $caminho,
-        $autenticacaoControlador
-    )) {
-        return;
-    }
-
-    http_response_code(404);
-
-    echo json_encode([
-        'erro' => 'Rota não encontrada.'
-    ]);
+    registrarRotasUsuarios($roteador, $usuarioControlador);
+    registrarRotasClientes($roteador, $clienteControlador);
+    registrarRotasVeiculos($roteador, $veiculoControlador);
+    registrarRotasAutenticacao($roteador, $autenticacaoControlador);
 }

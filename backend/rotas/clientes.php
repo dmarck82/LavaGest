@@ -3,79 +3,36 @@
 declare(strict_types=1);
 
 use LavaGest\Controladores\ClienteControlador;
-use LavaGest\Seguranca\Autenticador;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Http\Roteador;
 
-function processarRotasClientes(
-    string $metodo,
-    string $caminho,
-    ClienteControlador $controlador,
-    Autenticador $autenticador
-): bool {
-    $partes = explode('/', trim($caminho, '/'));
+function registrarRotasClientes(Roteador $roteador, ClienteControlador $controlador): void
+{
+    // A função de cada rota só será executada quando chegar uma requisição correspondente.
+    $roteador->adicionar('GET', '/clientes', function () use ($controlador): RespostaJson {
+        return $controlador->listar();
+    });
 
-    $ehRotaComId = (
-        count($partes) === 2
-        && $partes[0] === 'clientes'
-        && ctype_digit($partes[1])
-    );
+    $roteador->adicionar('POST', '/clientes', function (Requisicao $requisicao) use ($controlador): RespostaJson {
+        return $controlador->criar($requisicao);
+    });
 
-    if (($partes[0] ?? '') !== 'clientes') {
-        return false;
-    }
+    $roteador->adicionar('GET', '/clientes/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-    $autenticador->autenticar();
+        return $controlador->buscar($id);
+    });
 
-    if ($metodo === 'GET' && $caminho === '/clientes') {
-        echo json_encode($controlador->listarClientes());
+    $roteador->adicionar('PUT', '/clientes/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-        return true;
-    }
+        return $controlador->atualizar($requisicao, $id);
+    });
 
-    if ($metodo === 'POST' && $caminho === '/clientes') {
-        $dados = json_decode(
-            file_get_contents('php://input'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
+    $roteador->adicionar('DELETE', '/clientes/{id}', function (Requisicao $requisicao, array $parametros) use ($controlador): RespostaJson {
+        $id = (int) $parametros['id'];
 
-        http_response_code(201);
-
-        echo json_encode($controlador->criarCliente($dados));
-
-        return true;
-    }
-
-    if ($metodo === 'GET' && $ehRotaComId) {
-        echo json_encode(
-            $controlador->buscarCliente((int) $partes[1])
-        );
-
-        return true;
-    }
-
-    if ($metodo === 'PUT' && $ehRotaComId) {
-        $dados = json_decode(
-            file_get_contents('php://input'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-
-        echo json_encode(
-            $controlador->atualizarCliente((int) $partes[1], $dados)
-        );
-
-        return true;
-    }
-
-    if ($metodo === 'DELETE' && $ehRotaComId) {
-        $controlador->deletarCliente((int) $partes[1]);
-
-        http_response_code(204);
-
-        return true;
-    }
-
-    return false;
+        return $controlador->deletar($id);
+    });
 }

@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace LavaGest\Repositorios;
 
+use LavaGest\Contratos\VeiculoRepositorioInterface;
 use LavaGest\Excecoes\PlacaJaCadastradaException;
 use LavaGest\Modelos\Veiculo;
+use LogicException;
 use PDO;
 use PDOException;
 use PDOStatement;
 
-class VeiculoRepositorio
+// Implementa o contrato de veículos usando SQL e uma conexão PDO.
+class VeiculoRepositorio implements VeiculoRepositorioInterface
 {
     private PDO $conexao;
+
     public function __construct(PDO $conexao)
     {
         $this->conexao = $conexao;
     }
+
     public function criar(Veiculo $veiculo): Veiculo
     {
         $comando = $this->conexao->prepare(
@@ -34,10 +39,18 @@ class VeiculoRepositorio
 
         $this->vincularDadosDoVeiculo($comando, $veiculo);
 
-        $this->executarComando($comando);
+        $this->executarComando($comando, $veiculo);
 
-        return $this->buscarPorId((int)$this->conexao->lastInsertId());
+        $id = (int) $this->conexao->lastInsertId();
+        $veiculoCriado = $this->buscarPorId($id);
+
+        if ($veiculoCriado === null) {
+            throw new LogicException('Não foi possível recuperar o veículo criado.');
+        }
+
+        return $veiculoCriado;
     }
+
     public function atualizar(Veiculo $veiculo): void
     {
         $comando = $this->conexao->prepare(
@@ -58,7 +71,7 @@ class VeiculoRepositorio
             $veiculo->getId(),
             PDO::PARAM_INT
         );
-        $this->executarComando($comando);
+        $this->executarComando($comando, $veiculo);
     }
 
     public function buscarPorId(int $id): ?Veiculo
@@ -71,21 +84,36 @@ class VeiculoRepositorio
 
         $resultado = $comando->fetch(PDO::FETCH_ASSOC);
 
-        return $resultado === false
-            ? null
-            : $this->transformarEmVeiculo($resultado);
+        if ($resultado === false) {
+            return null;
+        }
+
+        return $this->transformarEmVeiculo($resultado);
+    }
+
+    public function existePorCliente(int $clienteId): bool
+    {
+        $comando = $this->conexao->prepare(
+            'SELECT 1 FROM vei_veiculo WHERE vei_cliente_id = :cliente_id LIMIT 1'
+        );
+        $comando->execute([':cliente_id' => $clienteId]);
+
+        return $comando->fetchColumn() !== false;
     }
 
     public function listarTodos(): array
     {
-        $resultados = $this->conexao->query(
-            'SELECT * FROM vei_veiculo ORDER BY vei_modelo, vei_placa'
-        )->fetchAll(PDO::FETCH_ASSOC);
+        $sql = 'SELECT * FROM vei_veiculo ORDER BY vei_modelo, vei_placa';
+        $comando = $this->conexao->query($sql);
+        $resultados = $comando->fetchAll(PDO::FETCH_ASSOC);
+        $veiculos = [];
 
-        return array_map(
-            fn(array $resultado) => $this->transformarEmVeiculo($resultado),
-            $resultados
-        );
+        foreach ($resultados as $resultado) {
+            $veiculo = $this->transformarEmVeiculo($resultado);
+            $veiculos[] = $veiculo;
+        }
+
+        return $veiculos;
     }
 
     public function deletar(int $id): void
@@ -111,12 +139,23 @@ class VeiculoRepositorio
         $comando->bindValue(':observacoes', $veiculo->getObservacoes());
     }
 
-    private function executarComando(PDOStatement $comando): void
+    private function executarComando(PDOStatement $comando, Veiculo $veiculo): void
     {
         try {
             $comando->execute();
         } catch (PDOException $erro) {
-            if (str_contains($erro->getMessage(), 'vei_veiculo.vei_placa')) {
+            // Uma placa duplicada vira uma exceção de negócio; outras falhas continuam sendo erros de banco.
+            if ($erro->getCode() !== '23000') {
+                throw $erro;
+            }
+
+            $consulta = $this->conexao->prepare(
+                'SELECT vei_id FROM vei_veiculo WHERE vei_placa = :placa'
+            );
+            $consulta->execute([':placa' => $veiculo->getPlaca()]);
+            $idExistente = $consulta->fetchColumn();
+
+            if ($idExistente !== false && (int) $idExistente !== $veiculo->getId()) {
                 throw new PlacaJaCadastradaException(
                     'Já existe um veículo cadastrado com esta placa.',
                     0,
@@ -130,6 +169,12 @@ class VeiculoRepositorio
 
     private function transformarEmVeiculo(array $resultado): Veiculo
     {
+        $anoFabricacao = null;
+
+        if ($resultado['vei_ano_fabricacao'] !== null) {
+            $anoFabricacao = (int) $resultado['vei_ano_fabricacao'];
+        }
+
         return new Veiculo(
             (int) $resultado['vei_cliente_id'],
             $resultado['vei_placa'],
@@ -137,7 +182,7 @@ class VeiculoRepositorio
             $resultado['vei_categoria'],
             $resultado['vei_marca'],
             $resultado['vei_cor'],
-            $resultado['vei_ano_fabricacao'] === null ? null : (int) $resultado['vei_ano_fabricacao'],
+            $anoFabricacao,
             $resultado['vei_observacoes'],
             (int) $resultado['vei_id'],
             $resultado['vei_criado_em']

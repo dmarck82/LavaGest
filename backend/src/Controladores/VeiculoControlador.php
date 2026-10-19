@@ -4,128 +4,81 @@ declare(strict_types=1);
 
 namespace LavaGest\Controladores;
 
-use InvalidArgumentException;
-use LavaGest\Modelos\Veiculo;
-use LavaGest\Repositorios\ClienteRepositorio;
-use LavaGest\Repositorios\VeiculoRepositorio;
-use RuntimeException;
+use LavaGest\Http\Campos;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Servicos\VeiculoServico;
 
+// Recebe dados do HTTP e devolve uma resposta. As operações ficam no serviço.
 class VeiculoControlador
 {
-    private VeiculoRepositorio $veiculos;
+    // "?" significa que o campo aceita null. As regras do valor ficam no modelo.
+    private const CAMPOS = [
+        'cliente_id' => 'inteiro',
+        'placa' => 'texto',
+        'modelo' => 'texto',
+        'categoria' => 'texto',
+        'marca' => '?texto',
+        'cor' => '?texto',
+        'ano_fabricacao' => '?inteiro',
+        'observacoes' => '?texto',
+    ];
 
-    private ClienteRepositorio $clientes;
+    private VeiculoServico $servico;
 
-    public function __construct(VeiculoRepositorio $veiculos, ClienteRepositorio $clientes)
+    public function __construct(VeiculoServico $servico)
     {
-        $this->veiculos = $veiculos;
-        $this->clientes = $clientes;
+        $this->servico = $servico;
     }
 
-    public function criarVeiculo(array $d): array
+    public function criar(Requisicao $requisicao): RespostaJson
     {
-        $v = $this->montar($d);
-        return $this->veiculos->criar($v)->paraArray();
+        $dadosRecebidos = $requisicao->json();
+        $camposObrigatorios = ['cliente_id', 'placa', 'modelo', 'categoria'];
+        $dadosValidados = Campos::validar($dadosRecebidos, self::CAMPOS, $camposObrigatorios);
+
+        $veiculo = $this->servico->criar($dadosValidados);
+        $dadosResposta = $veiculo->paraArray();
+
+        return new RespostaJson($dadosResposta, 201);
     }
 
-    public function atualizarVeiculo(int $id, array $d): array
+    public function atualizar(Requisicao $requisicao, int $id): RespostaJson
     {
-        $v = $this->buscar($id);
-        $d = array_merge($v->paraArray(), $d);
-        $v = $this->montar($d, $id);
-        $this->veiculos->atualizar($v);
-        return $v->paraArray();
+        $dadosRecebidos = $requisicao->json();
+        $dadosValidados = Campos::validar($dadosRecebidos, self::CAMPOS);
+
+        $veiculo = $this->servico->atualizar($id, $dadosValidados);
+        $dadosResposta = $veiculo->paraArray();
+
+        return new RespostaJson($dadosResposta);
     }
 
-    public function buscarVeiculo(int $id): array
+    public function buscar(int $id): RespostaJson
     {
-        return $this->buscar($id)->paraArray();
+        $veiculo = $this->servico->buscar($id);
+        $dadosResposta = $veiculo->paraArray();
+
+        return new RespostaJson($dadosResposta);
     }
 
-    public function listarVeiculos(): array
+    public function listar(): RespostaJson
     {
-        return array_map(fn(Veiculo $v) => $v->paraArray(), $this->veiculos->listarTodos());
-    }
+        $veiculos = $this->servico->listar();
+        $dadosResposta = [];
 
-    public function deletarVeiculo(int $id): void
-    {
-        $this->buscar($id);
-        $this->veiculos->deletar($id);
-    }
-
-    private function montar(array $d, ?int $id = null): Veiculo
-    {
-        $cliente = $this->inteiro($d, 'cliente_id');
-
-        if ($this->clientes->buscarPorId($cliente) === null) {
-            throw new RuntimeException('Cliente não encontrado.');
+        foreach ($veiculos as $veiculo) {
+            $dadosResposta[] = $veiculo->paraArray();
         }
 
-        return new Veiculo(
-            $cliente,
-            $this->texto($d, 'placa'),
-            $this->texto($d, 'modelo'),
-            $this->texto($d, 'categoria'),
-            $this->opcional($d, 'marca'),
-            $this->opcional($d, 'cor'),
-            $this->inteiroOpcional($d, 'ano_fabricacao'),
-            $this->opcional($d, 'observacoes'),
-            $id
-        );
+        return new RespostaJson($dadosResposta);
     }
 
-    private function buscar(int $id): Veiculo
+    public function deletar(int $id): RespostaJson
     {
-        $v = $this->veiculos->buscarPorId($id);
+        $this->servico->deletar($id);
 
-        if ($v === null) {
-            throw new RuntimeException('Veículo não encontrado.');
-        }
-
-        return $v;
-    }
-
-    private function texto(array $d, string $c): string
-    {
-        if (!isset($d[$c]) || !is_string($d[$c]) || trim($d[$c]) === '') {
-            throw new InvalidArgumentException("O campo '{$c}' é obrigatório.");
-        }
-
-        return $d[$c];
-    }
-
-    private function opcional(array $d, string $c): ?string
-    {
-        if (!array_key_exists($c, $d) || $d[$c] === null) {
-            return null;
-        }
-
-        if (!is_string($d[$c])) {
-            throw new InvalidArgumentException("O campo '{$c}' deve ser um texto.");
-        }
-
-        return $d[$c];
-    }
-
-    private function inteiro(array $d, string $c): int
-    {
-        if (!isset($d[$c]) || !is_int($d[$c]) || $d[$c] < 1) {
-            throw new InvalidArgumentException("O campo '{$c}' deve ser um número inteiro positivo.");
-        }
-
-        return $d[$c];
-    }
-
-    private function inteiroOpcional(array $d, string $c): ?int
-    {
-        if (!array_key_exists($c, $d) || $d[$c] === null) {
-            return null;
-        }
-
-        if (!is_int($d[$c])) {
-            throw new InvalidArgumentException("O campo '{$c}' deve ser um número inteiro.");
-        }
-
-        return $d[$c];
+        // 204 significa sucesso sem conteúdo no corpo da resposta.
+        return new RespostaJson(null, 204);
     }
 }

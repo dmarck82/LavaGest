@@ -1,7 +1,8 @@
+import { criarSessao } from './infraestrutura/sessao.js';
+
+const sessao = criarSessao(sessionStorage, window.location);
 const paginaAtual = document.body.dataset.pagina;
-const itemAtivo = document.querySelector(
-    '[data-menu="' + paginaAtual + '"]'
-);
+const itemAtivo = document.querySelector('[data-menu="' + paginaAtual + '"]');
 const botaoSair = document.querySelector('#botao-sair');
 
 if (itemAtivo) {
@@ -10,10 +11,9 @@ if (itemAtivo) {
 }
 
 if (botaoSair) {
-    botaoSair.addEventListener('click', () => {
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('token_expira_em');
+    botaoSair.addEventListener('click', sair);
+}
 
-        window.location.replace('index.html');
-    });
+function sair() {
+    sessao.encerrar();
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace LavaGest\Repositorios;
 
+use LavaGest\Contratos\TokenRepositorioInterface;
 use PDO;
 
-class TokenRepositorio
+// Persiste hashes de tokens. Quem gera o token é o serviço de autenticação.
+class TokenRepositorio implements TokenRepositorioInterface
 {
     private PDO $conexao;
 
@@ -15,70 +17,34 @@ class TokenRepositorio
         $this->conexao = $conexao;
     }
 
-    public function criar(int $usuarioId): array
+    public function salvar(int $usuarioId, string $hash, string $expiraEm): void
     {
-        $token = bin2hex(random_bytes(32));
-
-        $tokenHash = hash('sha256', $token);
-
-        $expiraEm = date(
-            'Y-m-d H:i:s',
-            strtotime('+1 hour')
-        );
-
         $sql = '
-            INSERT INTO aut_token (
-                usu_id,
-                aut_token_hash,
-                aut_expira_em
-            ) VALUES (
-                :usuario_id,
-                :token_hash,
-                :expira_em
-            )
+            INSERT INTO aut_token (usu_id, aut_token_hash, aut_expira_em)
+            VALUES (:usuario_id, :hash, :expira_em)
         ';
 
-        $stmt = $this->conexao->prepare($sql);
-
-        $stmt->bindValue(':usuario_id', $usuarioId, PDO::PARAM_INT);
-        $stmt->bindValue(':token_hash', $tokenHash);
-        $stmt->bindValue(':expira_em', $expiraEm);
-
-        $stmt->execute();
-
-        return [
-            'token' => $token,
-            'tipo' => 'Bearer',
-            'expira_em' => $expiraEm,
-        ];
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':usuario_id', $usuarioId, PDO::PARAM_INT);
+        $comando->bindValue(':hash', $hash);
+        $comando->bindValue(':expira_em', $expiraEm);
+        $comando->execute();
     }
 
-    public function buscarUsuarioIdPorToken(string $token): ?int
+    public function buscarUsuarioId(string $hash, string $agora): ?int
     {
         $sql = '
-            SELECT usu_id
-            FROM aut_token
-            WHERE
-                aut_token_hash = :token_hash
-                AND aut_expira_em > :agora
+            SELECT usu_id FROM aut_token
+            WHERE aut_token_hash = :hash AND aut_expira_em > :agora
             LIMIT 1
         ';
 
-        $stmt = $this->conexao->prepare($sql);
+        $comando = $this->conexao->prepare($sql);
+        $comando->bindValue(':hash', $hash);
+        $comando->bindValue(':agora', $agora);
+        $comando->execute();
 
-        $stmt->bindValue(
-            ':token_hash',
-            hash('sha256', $token)
-        );
-
-        $stmt->bindValue(
-            ':agora',
-            date('Y-m-d H:i:s')
-        );
-
-        $stmt->execute();
-
-        $usuarioId = $stmt->fetchColumn();
+        $usuarioId = $comando->fetchColumn();
 
         if ($usuarioId === false) {
             return null;

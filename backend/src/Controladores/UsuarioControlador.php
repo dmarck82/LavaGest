@@ -4,144 +4,78 @@ declare(strict_types=1);
 
 namespace LavaGest\Controladores;
 
-use LavaGest\Modelos\Usuario;
-use LavaGest\Repositorios\UsuarioRepositorio;
-use InvalidArgumentException;
-use RuntimeException;
+use LavaGest\Http\Campos;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Servicos\UsuarioServico;
 
+// Recebe dados do HTTP e devolve uma resposta. As operações ficam no serviço.
 class UsuarioControlador
 {
-    private UsuarioRepositorio $usuarioRepositorio;
+    // "?" significa que o campo aceita null. As regras do valor ficam no modelo.
+    private const CAMPOS = [
+        'nome' => 'texto',
+        'email' => 'texto',
+        'senha' => 'texto',
+        'telefone' => 'texto',
+        'status' => 'texto',
+    ];
 
-    public function __construct(UsuarioRepositorio $usuarioRepositorio)
+    private UsuarioServico $servico;
+
+    public function __construct(UsuarioServico $servico)
     {
-        $this->usuarioRepositorio = $usuarioRepositorio;
+        $this->servico = $servico;
     }
 
-    public function criarUsuario(array $dados): array
+    public function criar(Requisicao $requisicao): RespostaJson
     {
-        $this->validarCamposObrigatorios(
-            $dados,
-            [
-                'nome',
-                'email',
-                'senha',
-                'telefone',
-            ]
-        );
+        $dadosRecebidos = $requisicao->json();
+        $camposObrigatorios = ['nome', 'email', 'senha', 'telefone'];
+        $dadosValidados = Campos::validar($dadosRecebidos, self::CAMPOS, $camposObrigatorios);
 
-        $usuario = new Usuario(
-            $dados['nome'],
-            $dados['email'],
-            $dados['senha'],
-            $dados['telefone'] ?? '',
-            array_key_exists('status', $dados) ? $dados['status'] : 'ativo'
-        );
+        $usuario = $this->servico->criar($dadosValidados);
+        $dadosResposta = $usuario->paraArray();
 
-        $usuarioCriado = $this->usuarioRepositorio->criar($usuario);
-
-        return $usuarioCriado->paraArray();
+        return new RespostaJson($dadosResposta, 201);
     }
 
-    public function atualizarUsuario(int $id, array $dados): array
+    public function atualizar(Requisicao $requisicao, int $id): RespostaJson
     {
-        $usuarioExistente = $this->buscarUsuarioOuFalhar($id);
+        $dadosRecebidos = $requisicao->json();
+        $dadosValidados = Campos::validar($dadosRecebidos, self::CAMPOS);
 
-        $usuarioAtualizado = new Usuario(
-            $dados['nome'] ?? $usuarioExistente->getNome(),
-            $dados['email'] ?? $usuarioExistente->getEmail(),
-            $usuarioExistente->getSenha(),
-            $dados['telefone'] ?? $usuarioExistente->getTelefone(),
-            array_key_exists('status', $dados) ? $dados['status'] : $usuarioExistente->getStatus(),
-            $id,
-            $usuarioExistente->getUltimoLogin()
-        );
+        $usuario = $this->servico->atualizar($id, $dadosValidados);
+        $dadosResposta = $usuario->paraArray();
 
-        $this->usuarioRepositorio->atualizar($usuarioAtualizado);
-
-        return $usuarioAtualizado->paraArray();
+        return new RespostaJson($dadosResposta);
     }
 
-    public function deletarUsuario(int $id): void
+    public function buscar(int $id): RespostaJson
     {
-        $this->buscarUsuarioOuFalhar($id);
+        $usuario = $this->servico->buscar($id);
+        $dadosResposta = $usuario->paraArray();
 
-        $this->usuarioRepositorio->deletar($id);
+        return new RespostaJson($dadosResposta);
     }
 
-    public function buscarUsuario(int $id): array
+    public function listar(): RespostaJson
     {
-        $usuario = $this->buscarUsuarioOuFalhar($id);
+        $usuarios = $this->servico->listar();
+        $dadosResposta = [];
 
-        return $usuario->paraArray();
-    }
-
-    public function listarUsuarios(): array
-    {
-        $usuarios = $this->usuarioRepositorio->listarTodos();
-
-        return array_map(fn($usuario) => $usuario->paraArray(), $usuarios);
-    }
-
-    public function buscarUsuarioPorEmail(string $email): array
-    {
-        $usuario = $this->usuarioRepositorio->buscarPorEmail($email);
-
-        if (!$usuario) {
-            throw new RuntimeException('Usuário não encontrado.');
+        foreach ($usuarios as $usuario) {
+            $dadosResposta[] = $usuario->paraArray();
         }
 
-        return $usuario->paraArray();
+        return new RespostaJson($dadosResposta);
     }
 
-    public function atualizarSenha(int $id, string $novaSenha): void
+    public function deletar(int $id): RespostaJson
     {
-        $usuarioExistente = $this->buscarUsuarioOuFalhar($id);
+        $this->servico->deletar($id);
 
-        $usuarioExistente->alterarSenha($novaSenha);
-
-        $this->usuarioRepositorio->atualizarSenha($id, $usuarioExistente->getSenha());
-    }
-
-    public function buscarUsuariosPorNome(string $nome): array
-    {
-        $usuarios = $this->usuarioRepositorio->buscarPorNome($nome);
-
-        return array_map(fn($usuario) => $usuario->paraArray(), $usuarios);
-    }
-
-    public function atualizarUltimoLogin(int $id): void
-    {
-        $this->buscarUsuarioOuFalhar($id);
-
-        $this->usuarioRepositorio->atualizarUltimoLogin($id);
-    }
-
-    private function buscarUsuarioOuFalhar(int $id): Usuario
-    {
-        $usuario = $this->usuarioRepositorio->buscarPorId($id);
-
-        if (!$usuario) {
-            throw new RuntimeException('Usuário não encontrado.');
-        }
-
-        return $usuario;
-    }
-
-    private function validarCamposObrigatorios(
-        array $dados,
-        array $campos
-    ): void {
-        foreach ($campos as $campo) {
-            if (
-                !array_key_exists($campo, $dados)
-                || !is_string($dados[$campo])
-                || trim($dados[$campo]) === ''
-            ) {
-                throw new InvalidArgumentException(
-                    "O campo '{$campo}' é obrigatório."
-                );
-            }
-        }
+        // 204 significa sucesso sem conteúdo no corpo da resposta.
+        return new RespostaJson(null, 204);
     }
 }

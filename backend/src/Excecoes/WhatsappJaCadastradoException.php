@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace LavaGest\Excecoes;
 
-use RuntimeException;
-
-class WhatsappJaCadastradoException extends RuntimeException
+class WhatsappJaCadastradoException extends ConflitoException
 {
 }

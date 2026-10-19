@@ -1,0 +1,12 @@
+{
+    "name": "lavagest-frontend",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "dev": "node servidor.js",
+        "test": "node --test"
+    }
+}

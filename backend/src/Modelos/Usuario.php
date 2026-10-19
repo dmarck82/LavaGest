@@ -29,12 +29,14 @@ class Usuario
         $this->validaEmail($email);
         $this->validarSenha($senha);
         $this->validarStatus($status);
+        $nome = $this->normalizarNome($nome);
+        $telefone = $this->normalizarTelefone($telefone);
 
         $this->id = $id;
         $this->nome = $nome;
         $this->email = $email;
         $this->senha = $senha;
-        $this->telefone = $this->normalizarTelefone($telefone);
+        $this->telefone = $telefone;
         $this->status = $status;
         $this->ultimo_login = $ultimo_login;
     }
@@ -84,6 +86,8 @@ class Usuario
         $this->validaEmail($email);
         $this->validarSenha($senha);
         $this->validarStatus($status);
+        $nome = $this->normalizarNome($nome);
+        $telefone = $this->normalizarTelefone($telefone);
 
         $this->nome = $nome;
         $this->email = $email;
@@ -109,6 +113,17 @@ class Usuario
         $this->validarSenha($novaSenha);
 
         $this->senha = $novaSenha;
+    }
+
+    private function normalizarNome(string $nome): string
+    {
+        $nome = trim($nome);
+
+        if ($nome === '') {
+            throw new InvalidArgumentException('Nome é obrigatório.');
+        }
+
+        return $nome;
     }
 
     private function validarStatus(mixed $status): void

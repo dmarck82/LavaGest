@@ -4,54 +4,34 @@ declare(strict_types=1);
 
 namespace LavaGest\Controladores;
 
-use LavaGest\Excecoes\CredenciaisInvalidasException;
-use LavaGest\Repositorios\TokenRepositorio;
-use LavaGest\Repositorios\UsuarioRepositorio;
-use InvalidArgumentException;
-use LogicException;
+use LavaGest\Http\Campos;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Servicos\AutenticacaoServico;
 
 class AutenticacaoControlador
 {
-    private UsuarioRepositorio $usuarioRepositorio;
-    private TokenRepositorio $tokenRepositorio;
+    private AutenticacaoServico $servico;
 
-    public function __construct(
-        UsuarioRepositorio $usuarioRepositorio,
-        TokenRepositorio $tokenRepositorio
-    ) {
-        $this->usuarioRepositorio = $usuarioRepositorio;
-        $this->tokenRepositorio = $tokenRepositorio;
+    public function __construct(AutenticacaoServico $servico)
+    {
+        $this->servico = $servico;
     }
 
-    public function autenticar(array $dados): array
+    public function autenticar(Requisicao $requisicao): RespostaJson
     {
-        $email = $dados['email'] ?? null;
-        $senha = $dados['senha'] ?? null;
+        $dadosRecebidos = $requisicao->json();
+        $tiposDosCampos = [
+            'email' => 'texto',
+            'senha' => 'texto',
+        ];
+        $camposObrigatorios = ['email', 'senha'];
+        $dadosValidados = Campos::validar($dadosRecebidos, $tiposDosCampos, $camposObrigatorios);
 
-        if (!is_string($email) || !is_string($senha)) {
-            throw new InvalidArgumentException(
-                'E-mail e senha são obrigatórios.'
-            );
-        }
+        $email = $dadosValidados['email'];
+        $senha = $dadosValidados['senha'];
+        $autenticacao = $this->servico->autenticar($email, $senha);
 
-        $usuario = $this->usuarioRepositorio->buscarPorEmail($email);
-
-        if (!$usuario || !password_verify($senha, $usuario->getSenha())) {
-            throw new CredenciaisInvalidasException(
-                'E-mail ou senha inválidos.'
-            );
-        }
-
-        $usuarioId = $usuario->getId();
-
-        if ($usuarioId === null) {
-            throw new LogicException(
-                'Usuário autenticado sem ID.'
-            );
-        }
-
-        $this->usuarioRepositorio->atualizarUltimoLogin($usuarioId);
-
-        return $this->tokenRepositorio->criar($usuarioId);
+        return new RespostaJson($autenticacao);
     }
 }

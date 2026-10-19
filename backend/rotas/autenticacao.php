@@ -3,24 +3,14 @@
 declare(strict_types=1);
 
 use LavaGest\Controladores\AutenticacaoControlador;
+use LavaGest\Http\Requisicao;
+use LavaGest\Http\RespostaJson;
+use LavaGest\Http\Roteador;
 
-function processarRotasAutenticacao(
-    string $metodo,
-    string $caminho,
-    AutenticacaoControlador $controlador
-): bool {
-    if ($metodo !== 'POST' || $caminho !== '/autenticacao') {
-        return false;
-    }
-
-    $dados = json_decode(
-        file_get_contents('php://input'),
-        true,
-        512,
-        JSON_THROW_ON_ERROR
-    );
-
-    echo json_encode($controlador->autenticar($dados));
-
-    return true;
+function registrarRotasAutenticacao(Roteador $roteador, AutenticacaoControlador $controlador): void
+{
+    // O login precisa ser público para permitir obter o primeiro token.
+    $roteador->adicionar('POST', '/autenticacao', function (Requisicao $requisicao) use ($controlador): RespostaJson {
+        return $controlador->autenticar($requisicao);
+    }, false);
 }

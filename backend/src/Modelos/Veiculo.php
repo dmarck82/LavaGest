@@ -41,7 +41,16 @@ class Veiculo
         ?string $criado_em = null
     ) {
         $this->id = $id;
-        $this->atualizar($cliente_id, $placa, $modelo, $categoria, $marca, $cor, $ano_fabricacao, $observacoes);
+        $this->atualizar(
+            $cliente_id,
+            $placa,
+            $modelo,
+            $categoria,
+            $marca,
+            $cor,
+            $ano_fabricacao,
+            $observacoes
+        );
         $this->criado_em = $criado_em;
     }
 
@@ -55,7 +64,9 @@ class Veiculo
         ?int $ano_fabricacao = null,
         ?string $observacoes = null
     ): void {
-        $placa = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $placa));
+        // Remove a pontuação e usa letras maiúsculas: abc-1234 vira ABC1234.
+        $placaSemPontuacao = preg_replace('/[^A-Za-z0-9]/', '', $placa);
+        $placa = strtoupper($placaSemPontuacao);
 
         if ($cliente_id < 1) {
             throw new InvalidArgumentException('Cliente inválido.');
@@ -71,12 +82,18 @@ class Veiculo
         }
 
         $categoria = strtolower(trim($categoria));
-        if (!in_array($categoria, ['moto', 'compacto', 'hatch', 'sedan', 'suv', 'caminhonete', 'van'], true)) {
+        $categoriasPermitidas = ['moto', 'compacto', 'hatch', 'sedan', 'suv', 'caminhonete', 'van'];
+
+        if (!in_array($categoria, $categoriasPermitidas, true)) {
             throw new InvalidArgumentException('Categoria de veículo inválida.');
         }
 
-        if ($ano_fabricacao !== null && ($ano_fabricacao < 1886 || $ano_fabricacao > (int)date('Y') + 1)) {
-            throw new InvalidArgumentException('Ano de fabricação inválido.');
+        if ($ano_fabricacao !== null) {
+            $maiorAnoPermitido = (int) date('Y') + 1;
+
+            if ($ano_fabricacao < 1886 || $ano_fabricacao > $maiorAnoPermitido) {
+                throw new InvalidArgumentException('Ano de fabricação inválido.');
+            }
         }
 
         $this->cliente_id = $cliente_id;
@@ -91,7 +108,17 @@ class Veiculo
 
     private function opcional(?string $valor): ?string
     {
-        return $valor === null || trim($valor) === '' ? null : trim($valor);
+        if ($valor === null) {
+            return null;
+        }
+
+        $valor = trim($valor);
+
+        if ($valor === '') {
+            return null;
+        }
+
+        return $valor;
     }
 
     public function getId(): ?int

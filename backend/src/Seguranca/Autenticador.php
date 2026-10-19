@@ -4,44 +4,27 @@ declare(strict_types=1);
 
 namespace LavaGest\Seguranca;
 
+use LavaGest\Contratos\TokenRepositorioInterface;
 use LavaGest\Excecoes\TokenInvalidoException;
-use LavaGest\Repositorios\TokenRepositorio;
 
+// Confere um token recebido. A leitura do cabeçalho HTTP fica em Requisicao.
 class Autenticador
 {
-    private TokenRepositorio $tokenRepositorio;
+    private TokenRepositorioInterface $tokenRepositorio;
 
-    public function __construct(
-        TokenRepositorio $tokenRepositorio
-    ) {
+    public function __construct(TokenRepositorioInterface $tokenRepositorio)
+    {
         $this->tokenRepositorio = $tokenRepositorio;
     }
 
-    public function autenticar(): int
+    public function autenticar(string $token): int
     {
-        $cabecalho = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-
-        if (
-            !preg_match(
-                '/^Bearer\s+(.+)$/i',
-                $cabecalho,
-                $correspondencias
-            )
-        ) {
-            throw new TokenInvalidoException(
-                'Token de autenticação não informado.'
-            );
-        }
-
-        $token = trim($correspondencias[1]);
-
-        $usuarioId = $this->tokenRepositorio
-            ->buscarUsuarioIdPorToken($token);
+        $tokenHash = hash('sha256', $token);
+        $agora = date('Y-m-d H:i:s');
+        $usuarioId = $this->tokenRepositorio->buscarUsuarioId($tokenHash, $agora);
 
         if ($usuarioId === null) {
-            throw new TokenInvalidoException(
-                'Token inválido ou expirado.'
-            );
+            throw new TokenInvalidoException('Token inválido ou expirado.');
         }
 
         return $usuarioId;
